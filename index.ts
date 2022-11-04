@@ -1,69 +1,66 @@
-type Options = {
-  container: string | HTMLElement,
-  color: string,
-  min?: number,
-  max: number,
-  step: number,
-  radius: number,
-};
-
-type NormalizedOptions = NonNullable<Options> & {
-  container: HTMLElement,
-};
-
-const defaultOptions: Partial<NormalizedOptions> = {
-  color: "#ff51a7",
-  min: 0,
-  radius: 200,
-};
+import { createSVGNode, normalizeOptions } from "./helpers";
+import { NormalizedOptions, Options } from "./helpers/types";
 
 export default class CircularSlider {
   private _options: NormalizedOptions;
+  private _value: number;
+
   constructor(opts: Options) {
-    this._options = this.normalizeOptions(opts);
+    this._options = normalizeOptions(opts);
+    this.renderDefault();
+    this.value = this._options.min;
   }
 
+  private get value() {
+    return this._value;
+  }
+  private set value(v: number) {
+    this._value = v;
+    requestAnimationFrame(this.updateArc);
+  }
+
+  private _arc: SVGElement;
   /**
-   * Checks options validity and normalizes options, finds container
-   * @param opts Options
-   * @returns NormalizedOptions
+   * dynamic circle arc path
    */
-  private normalizeOptions(opts: Options): NormalizedOptions {
-    const normalized = {
-      ...defaultOptions,
-      ...opts,
-    };
-    const container = typeof opts.container === "string" ? document.querySelector(opts.container) : opts.container;
-    if (!container || !(container instanceof HTMLElement)) {
-      // TODO: Should we watch for DOM changes?
-      throw new Error("Cannot find container");
+  private get arc(): SVGElement {
+    if (!this._arc) {
+      this._arc = createSVGNode("path", {d: this.arcPath.join(" ")});
     }
-    normalized.container = container;
-    if (opts.step === 0) {
-      throw new Error("Step cannot be zero");
-    }
-    const boundsDiff = normalized.max - normalized.min;
-    if (boundsDiff === 0) {
-      throw new Error("Slider's min and max options should differ.");
-    }
-    if (Math.abs(normalized.step) > Math.abs(boundsDiff)) {
-      throw new Error("Step cannot be larger than bounds difference");
-    }
-    // Support negative direction
-    if (Math.sign(boundsDiff) !== Math.sign(normalized.step)) {
-      normalized.step *= -1;
-    }
-    const mustBeNumbers = ["max", "min", "radius", "step"] as const;
-    for (const key of mustBeNumbers) {
-      normalized[key] = Number(opts[key]);
-      if (isNaN(normalized[key])) {
-        throw new Error(`${key} should be a number`);
-      }
-    }
-    return {
-      ...normalized,
-      container,
-    };
+    return this._arc;
+  }
+  private get size(): number {
+    return this._options.radius;
+  }
+  private get thickness(): number {
+    return 10; // TMP
+  }
+  private get bounds(): [start: number, end: number] {
+    return [this._options.min, this._options.max];
+  }
+  private renderDefault() {
+    const svg = createSVGNode("svg", {width: this.size, height: this.size});
+    svg.appendChild(this.arc);
+    this._options.container.appendChild(svg);
+  }
+  get arcPath(): Array<string | number> {
+    const center = this.size * 0.5;
+    // percent
+    const valueRatio = Math.min(1, Math.max(0, (this.value - this.bounds[0]) / (this.bounds[1] - this.bounds[0])));
+    // const value
+    // A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+    // a rx ry x-axis-rotation large-arc-flag sweep-flag dx dy
+    return [
+      "M", center, 0, // start on top
+      "A",
+      this.size - this.thickness / 2,
+      this.size - this.thickness / 2,
+      0,
+      // TODO
+    ];
+  }
+  private updateArc() {
+    this.arc.setAttributeNS(null, "path", this.arcPath.join(" "));
   }
   
 }
