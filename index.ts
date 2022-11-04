@@ -4,6 +4,7 @@ import { NormalizedOptions, Options } from "./helpers/types";
 export default class CircularSlider {
   private _options: NormalizedOptions;
   private _value: number;
+  private thickness = 10; // TMP
 
   constructor(opts: Options) {
     this._options = normalizeOptions(opts);
@@ -32,35 +33,38 @@ export default class CircularSlider {
   private get size(): number {
     return this._options.radius;
   }
-  private get thickness(): number {
-    return 10; // TMP
-  }
-  private get bounds(): [start: number, end: number] {
-    return [this._options.min, this._options.max];
-  }
   private renderDefault() {
     const svg = createSVGNode("svg", {width: this.size, height: this.size});
     svg.appendChild(this.arc);
     this._options.container.appendChild(svg);
   }
+
+  private arcPathBase = [
+    "M", this.size * 0.5, 0, // start on top
+    "A",
+    this.size - (this.thickness * 0.5), // rx
+    this.size - (this.thickness * 0.5), // ry
+    0,  // x-axis-rotation (doesn't matter for a circle)
+  ];
   get arcPath(): Array<string | number> {
-    const center = this.size * 0.5;
+    const start = this._options.min;
+    const end = this._options.max;
     // percent
-    const valueRatio = Math.min(1, Math.max(0, (this.value - this.bounds[0]) / (this.bounds[1] - this.bounds[0])));
-    // const value
+    const valueRatio = Math.min(1, Math.max(0, (this.value - start) / (end - start)));
+    const valueRadians = 2 * Math.PI * (1 - valueRatio); // slider increases clockwise
+    const dx = Math.cos(valueRadians);
+    const dy = Math.sin(valueRadians);
     // A rx ry x-axis-rotation large-arc-flag sweep-flag x y
-    // a rx ry x-axis-rotation large-arc-flag sweep-flag dx dy
     return [
-      "M", center, 0, // start on top
-      "A",
-      this.size - this.thickness / 2,
-      this.size - this.thickness / 2,
-      0,
-      // TODO
+      ...this.arcPathBase,
+      valueRatio > 0.5 ? 1 : 0, // large-arc-flag
+      0,  // TODO
+      ((this.size - this.thickness) / 2) * dx,
+      ((this.size - this.thickness) / 2) * dy,
     ];
   }
   private updateArc() {
-    this.arc.setAttributeNS(null, "path", this.arcPath.join(" "));
+    this.arc.setAttributeNS(null, "d", this.arcPath.join(" "));
   }
   
 }
