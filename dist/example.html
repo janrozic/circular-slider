@@ -4,16 +4,23 @@
         <title>Circular Slider Example</title>
     </head>
     <body style="background: #eaebeb;">
-        <div id="test1" style="margin: 100px"></div>
+        <div id="test1" style="margin: 60px; padding: 50px;border: solid red 1px"></div>
         <script src="index.js"></script>
         <script>
             new CircularSlider({
                 container: "#test1",
                 min: 0,
                 max: 100,
-                step: 1,
+                step: 2,
                 radius: 200,
-            })
+            });
+            new CircularSlider({
+                container: "#test1",
+                min: 1000,
+                max: -1000,
+                step: 20,
+                radius: 150,
+            });
         </script>
     </body>
 </html>

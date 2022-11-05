@@ -28,6 +28,10 @@ export default class CircularSlider {
     requestAnimationFrame(() => this.updateDynamic());
   }
 
+  private get root(): ShadowRoot {
+    return this.options.container.shadowRoot || this.options.container.attachShadow({mode: "open"});
+  }
+
   private _arc: SVGElement;
   /**
    * dynamic circle arc path
@@ -67,15 +71,16 @@ export default class CircularSlider {
   private get size(): number {
     return this.options.radius;
   }
-  private svg: SVGElement;
-
+  
   private attachListeners() {
-    this.options.container.addEventListener("mousedown", this.startDrag);
-    this.options.container.addEventListener("touchstart", this.startDrag);
+    this.root.addEventListener("mousedown", this.startDrag);
+    this.root.addEventListener("touchstart", this.startDrag);
     document.documentElement.addEventListener("mouseleave", this.stopDrag);
     document.documentElement.addEventListener("touchleave", this.stopDrag);
   }
-
+  
+  private svg: SVGElement;
+  private legend: HTMLSpanElement;
   /**
    * Creates slider structure. Should be called only once.
    */
@@ -85,6 +90,7 @@ export default class CircularSlider {
     this.svg = createSVGNode("svg", {
       width: this.size,
       height: this.size,
+      style: "position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%)",
     });
     // leading circle
     const circleBelow = createSVGNode("circle", {
@@ -100,7 +106,55 @@ export default class CircularSlider {
     // arc & handle (progress)
     this.svg.appendChild(this.arc);
     this.svg.appendChild(this.handle);
-    this.options.container.appendChild(this.svg);
+    this.holders.svg.appendChild(this.svg);
+    const legendHolder = document.createElement("div");
+    const legendIndicator = document.createElement("span");
+    this.legend = document.createElement("span");
+    this.legend.innerText = this.valueText;
+    legendIndicator.setAttribute("style", `background: ${this.options.color}`);
+    legendHolder.appendChild(this.legend);
+    legendHolder.appendChild(legendIndicator);
+    this.holders.legend.appendChild(legendHolder);
+  }
+
+  private _holders: {
+    svg: HTMLElement,
+    legend: HTMLElement,
+  }
+  private get holders(): typeof CircularSlider.prototype._holders {
+    if (!this._holders) {
+      this._holders = {
+        svg: undefined,
+        legend: undefined,
+      };
+      const keys = ["svg", "legend"] as const;
+      for (const key of keys) {
+        const dataSetProp = "circularSliderHolder" + key;
+        for (let i = 0; i < this.root.children.length; i++) {
+          const child = this.root.children[i];
+          if ((child instanceof HTMLElement) && child.dataset[dataSetProp]) {
+            this._holders[key] = child;
+          }
+        }
+        if (!this._holders[key]) {
+          this._holders[key] = document.createElement("div");
+          this._holders[key].dataset[dataSetProp] = "1";
+          this.root.appendChild(this._holders[key]);
+        }
+      }
+      let max = this.size;
+      for (let i = 0; i < this._holders.svg.children.length; i++) {
+        const svg = this._holders.svg.children[i];
+        if (svg.tagName.toLowerCase() === "svg") {
+          const size = svg.getBoundingClientRect().height;
+          max = Math.max(max, size);
+        }
+      }
+      this._holders.svg.style.position = "relative";
+      this._holders.svg.style.height = max + "px";
+      this._holders.svg.style.width = max + "px";
+    }
+    return this._holders;
   }
 
   /**
@@ -198,7 +252,9 @@ export default class CircularSlider {
       valueRatio,
     ];
   }
-
+  get valueText(): string {
+    return String(this.value);
+  }
   get arcPath(): Array<string | number> {
     const [center, circleRadius] = this.circleAttributes;
     const [endx, endy, progress] = this.endPoint;
@@ -221,6 +277,7 @@ export default class CircularSlider {
     // move handle
     this.handle.setAttributeNS(null, "cx", String(x));
     this.handle.setAttributeNS(null, "cy", String(y));
+    this.legend.textContent = this.valueText;
   }
   
 }
