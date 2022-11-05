@@ -10,7 +10,7 @@ export function createSVGNode(tagName: string, attributes: {[key: string]: any} 
   const n = document.createElementNS("http://www.w3.org/2000/svg", tagName.toLowerCase());
   for (const p in attributes)
     n.setAttributeNS(null, p, attributes[p]);
-  return n
+  return n;
 }
 
 const defaultOptions: Pick<NormalizedOptions, "color" | "min" | "radius"> = {

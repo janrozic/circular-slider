@@ -4,12 +4,12 @@ import { NormalizedOptions, Options } from "./helpers/types";
 export default class CircularSlider {
   private options: NormalizedOptions;
   private _value: number;
-  private thickness = 10; // TMP
+  private thickness = 20; // TMP
 
   constructor(opts: Options) {
     this.options = normalizeOptions(opts);
-    this._value = this.options.min; // TMP
-    // this._value = this._options.min + (this._options.max - this._options.min) * 0.5;
+    // this._value = this.options.min; // TMP
+    this._value = this.options.min + (this.options.max - this.options.min) * 0.3; // TMP
     this.renderDefault();
   }
 
@@ -17,8 +17,14 @@ export default class CircularSlider {
     return this._value;
   }
   private set value(v: number) {
-    this._value = v;
-    requestAnimationFrame(this.updateArc);
+    const start = this.options.min;
+    const end = this.options.max;
+    const min = Math.min(start, end);
+    const max = Math.max(start, end);
+    // snap to step (why "v - start" => start can be 3 and step 5 => we have to snap diff)
+    const diff = Math.round((v - start) / this.options.step) * this.options.step;
+    this._value = Math.min(max, Math.max(min, diff + start));
+    requestAnimationFrame(() => this.updateDynamic());
   }
 
   private _arc: SVGElement;
@@ -29,50 +35,150 @@ export default class CircularSlider {
     if (!this._arc) {
       this._arc = createSVGNode("path", {
         "d": this.arcPath.join(" "),
-        "stroke": this.options.color,
         "fill": "none",
+        "stroke": this.options.color,
+        "stroke-opacity": "80%",
         "stroke-linecap": "butt",
         "stroke-width": this.thickness,
       });
     }
     return this._arc;
   }
+  private _handle: SVGElement;
+  /**
+   * small indicator circle
+   */
+  private get handle(): SVGElement {
+    if (!this._handle) {
+      const [cx, cy] = this.endPoint;
+      this._handle = createSVGNode("circle", {
+        cx,
+        cy,
+        r: this.thickness * 0.5 + 1,
+        fill: "#efefef",
+        stroke: "#bfbfbf",
+        "stroke-width": 2,
+        style: "cursor: pointer",
+      });
+    }
+    return this._handle;
+  }
   private get size(): number {
     return this.options.radius;
   }
+  private svg: SVGElement;
   private renderDefault() {
-    const svg = createSVGNode("svg", {width: this.size, height: this.size});
-    svg.appendChild(this.arc);
-    this.options.container.appendChild(svg);
+    const [center, circleRadius] = this.circleAttributes;
+    // base svg
+    this.svg = createSVGNode("svg", {
+      width: this.size,
+      height: this.size,
+    });
+    this.svg.addEventListener("mousedown", this.startDrag);
+    // leading circle
+    const circleBelow = createSVGNode("circle", {
+      cx: center,
+      cy: center,
+      r: circleRadius,
+      fill: "none",
+      stroke: "#c0c1c2",
+      "stroke-width": this.thickness,
+      "stroke-dasharray": "7 2",  // approx
+    });
+    this.svg.appendChild(circleBelow);
+    // arc & handle (progress)
+    this.svg.appendChild(this.arc);
+    this.svg.appendChild(this.handle);
+    this.options.container.appendChild(this.svg);
   }
 
-  get arcPath(): Array<string | number> {
+  getEventPosition = (e: MouseEvent): [progress: number, isOnTarget: boolean] => {
+    const [center, circleRadius] = this.circleAttributes;
+    const centerOffsetX = e.offsetX - center;
+    const centerOffsetY = e.offsetY - center;
+
+    // TODO: The following process could probably be done more cleverly
+    const angleRad = Math.atan(centerOffsetY / centerOffsetX); // counterclockwise and starts on right
+    let quadrant: 1 | 2 | 3 | 4;  // 1st quadrant is top right (0-25%), 2nd is bottom right (25-50%), etc.
+    let angleProgress = angleRad / (2 * Math.PI); // normalized to 0 - 1 (instead of radians)
+    if (centerOffsetX < 0) {
+      quadrant = centerOffsetY < 0 ? 4 : 3;
+    } else {
+      quadrant = centerOffsetY < 0 ? 1 : 2;
+    }
+    switch (quadrant) {
+      case 1:
+      case 2:
+        angleProgress = 0.25 + angleProgress;
+        break;
+      case 3:
+      case 4:
+        angleProgress = 0.75 + angleProgress;
+        break;
+    }
+    const distanceFromCenter = Math.sqrt(centerOffsetX * centerOffsetX + centerOffsetY * centerOffsetY);
+    const isInCircle =
+      distanceFromCenter >= circleRadius - this.thickness * 0.5 &&
+      distanceFromCenter <= circleRadius + this.thickness * 0.5
+    ;
+    return [angleProgress, isInCircle];
+  }
+
+  startDrag = (e: MouseEvent) => {
+    const [progress, isOnTarget] = this.getEventPosition(e);
     const start = this.options.min;
-    const circleRadius = (this.size - this.thickness) * 0.5;
     const end = this.options.max;
-    const center = this.size * 0.5;
-    // percent
+    if (isOnTarget) {
+      this.value = start + (progress * (end - start));
+    }
+  }
+
+  get circleAttributes(): [center: number, radius: number] {
+    return [
+      this.size * 0.5,
+      (this.size - this.thickness) * 0.5,
+    ];
+  }
+
+  get endPoint(): [x: number, y: number, progress: number] {
+    const [center, circleRadius] = this.circleAttributes;
+    const start = this.options.min;
+    const end = this.options.max;
     const valueRatio = Math.min(1, Math.max(0, (this.value - start) / (end - start)));
     const valueRadians = 2 * Math.PI * (1 - valueRatio) + 0.5 * Math.PI; // slider increases clockwise, starts at top
     const dx = Math.cos(valueRadians);
     const dy = Math.sin(valueRadians);
-    console.log({dx, dy});
-    console.log(valueRadians, valueRatio);
-    // A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+    return [
+      center + circleRadius * dx,
+      center - circleRadius * dy, // y axis is reversed (down = more)
+      valueRatio,
+    ];
+  }
+
+  get arcPath(): Array<string | number> {
+    const [center, circleRadius] = this.circleAttributes;
+    const [endx, endy, progress] = this.endPoint;
+    // console.log({dx, dy});
+    // console.log(valueRadians, valueRatio);
     return [
       "M", center, this.thickness * 0.5, // start on top
       "A",
       circleRadius, // rx
       circleRadius, // ry
       0,  // x-axis-rotation (doesn't matter for a circle)
-      valueRatio > 0.5 ? 1 : 0, // large-arc-flag
-      1,  // TODO
-      center + circleRadius * dx,
-      center - circleRadius * dy, // y axis is reversed (down = more)
+      progress > 0.5 ? 1 : 0, // large-arc-flag
+      1,  // sweep-flag
+      endx,
+      endy,
     ];
   }
-  private updateArc() {
+  private updateDynamic = () => {
+    const [x, y] = this.endPoint;
+    // draw arc
     this.arc.setAttributeNS(null, "d", this.arcPath.join(" "));
+    // move handle
+    this.handle.setAttributeNS(null, "cx", String(x));
+    this.handle.setAttributeNS(null, "cy", String(y));
   }
   
 }
