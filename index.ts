@@ -1,4 +1,4 @@
-import { createSVGNode, normalizeOptions } from "./helpers";
+import { createSVGNode, getEventClientOffset, isTouchEvent, normalizeOptions } from "./helpers";
 import { NormalizedOptions, Options } from "./helpers/types";
 
 export default class CircularSlider {
@@ -11,6 +11,7 @@ export default class CircularSlider {
     // this._value = this.options.min; // TMP
     this._value = this.options.min + (this.options.max - this.options.min) * 0.3; // TMP
     this.renderDefault();
+    this.attachListeners();
   }
 
   private get value() {
@@ -67,6 +68,17 @@ export default class CircularSlider {
     return this.options.radius;
   }
   private svg: SVGElement;
+
+  private attachListeners() {
+    this.options.container.addEventListener("mousedown", this.startDrag);
+    this.options.container.addEventListener("touchstart", this.startDrag);
+    document.documentElement.addEventListener("mouseleave", this.stopDrag);
+    document.documentElement.addEventListener("touchleave", this.stopDrag);
+  }
+
+  /**
+   * Creates slider structure. Should be called only once.
+   */
   private renderDefault() {
     const [center, circleRadius] = this.circleAttributes;
     // base svg
@@ -74,7 +86,6 @@ export default class CircularSlider {
       width: this.size,
       height: this.size,
     });
-    this.svg.addEventListener("mousedown", this.startDrag);
     // leading circle
     const circleBelow = createSVGNode("circle", {
       cx: center,
@@ -92,10 +103,17 @@ export default class CircularSlider {
     this.options.container.appendChild(this.svg);
   }
 
-  getEventPosition = (e: MouseEvent): [progress: number, isOnTarget: boolean] => {
+  /**
+   * Calculates meaningful event position
+   * 
+   * @param clientXY Event coordinates.
+   * @returns [number: angle/progress (0 - 1) of circle, boolean: if event was on the circular track]
+   */
+   private getEventPosition = (clientXY: {x: number, y: number}): [progress: number, isOnTarget: boolean] => {
     const [center, circleRadius] = this.circleAttributes;
-    const centerOffsetX = e.offsetX - center;
-    const centerOffsetY = e.offsetY - center;
+    const svgPosition = this.svg.getBoundingClientRect();
+    const centerOffsetX = clientXY.x - svgPosition.x - center;
+    const centerOffsetY = clientXY.y - svgPosition.y - center;
 
     // TODO: The following process could probably be done more cleverly
     const angleRad = Math.atan(centerOffsetY / centerOffsetX); // counterclockwise and starts on right
@@ -124,13 +142,39 @@ export default class CircularSlider {
     return [angleProgress, isInCircle];
   }
 
-  startDrag = (e: MouseEvent) => {
-    const [progress, isOnTarget] = this.getEventPosition(e);
+  private onDrag = (e: MouseEvent | TouchEvent) => {
+    const clientXY = getEventClientOffset(e);
+    if (!clientXY) {
+      return;
+    }
+    const [progress] = this.getEventPosition(clientXY);
+    const start = this.options.min;
+    const end = this.options.max;
+    this.value = start + (progress * (end - start));
+  }
+
+  private startDrag = (e: MouseEvent | TouchEvent) => {
+    const clientXY = getEventClientOffset(e);
+    if (!clientXY) {
+      return;
+    }
+    const [progress, isOnTarget] = this.getEventPosition(clientXY);
     const start = this.options.min;
     const end = this.options.max;
     if (isOnTarget) {
+      e.preventDefault();
       this.value = start + (progress * (end - start));
+      document.documentElement.addEventListener("mousemove", this.onDrag);
+      document.documentElement.addEventListener("touchmove", this.onDrag);
+      document.documentElement.addEventListener("mouseup", this.stopDrag);
+      document.documentElement.addEventListener("touchend", this.stopDrag);
     }
+  }
+  public stopDrag = () => {
+    document.documentElement.removeEventListener("mousemove", this.onDrag);
+    document.documentElement.removeEventListener("touchmove", this.onDrag);
+    document.documentElement.removeEventListener("mouseup", this.stopDrag);
+    document.documentElement.removeEventListener("touchend", this.stopDrag);
   }
 
   get circleAttributes(): [center: number, radius: number] {
@@ -158,8 +202,6 @@ export default class CircularSlider {
   get arcPath(): Array<string | number> {
     const [center, circleRadius] = this.circleAttributes;
     const [endx, endy, progress] = this.endPoint;
-    // console.log({dx, dy});
-    // console.log(valueRadians, valueRatio);
     return [
       "M", center, this.thickness * 0.5, // start on top
       "A",

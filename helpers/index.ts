@@ -61,3 +61,22 @@ export function normalizeOptions(opts: Options): NormalizedOptions {
     container,
   };
 }
+
+export const isTouchEvent = (e: MouseEvent | TouchEvent): e is TouchEvent => e.type.substring(0, 5) === "touch";
+
+export function getEventClientOffset(e: MouseEvent | TouchEvent): {x: number, y: number} | undefined {
+  if (isTouchEvent(e)) {
+    if (e.touches.length !== 1) {
+      return;
+    }
+    return {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    };
+  } else {
+    return {
+      x: e.clientX,
+      y: e.clientY,
+    }
+  }
+}
