@@ -28,6 +28,11 @@ export default class CircularSlider {
     this._value = Math.min(max, Math.max(min, diff + start));
     requestAnimationFrame(() => this.updateDynamic());
   }
+  private get progress() {
+    const start = this.options.min;
+    const end = this.options.max;
+    return (this.value - start) / (end - start);
+  }
   private createRoot(shadowRoot: ShadowRoot): Element {
     const root = document.createElement("div");
     const css = document.createElement("style");
@@ -212,6 +217,17 @@ export default class CircularSlider {
       return;
     }
     const [progress] = this.getEventPosition(clientXY);
+    // snap on min or max (otherwise setting min or max is tricky)
+    const oldProgress = this.progress;
+    const snap = 0.05; // an arbitrary number
+    if (
+      // is just before or after min/max point
+      Math.abs(0.5 - progress) > (0.5 - snap) &&
+      // old progress is on the other side of min/max point
+      Math.sign(0.5 - progress) !== Math.sign(0.5 - oldProgress)
+    ) {
+      return;
+    }
     const start = this.options.min;
     const end = this.options.max;
     this.value = start + (progress * (end - start));
@@ -256,8 +272,13 @@ export default class CircularSlider {
     const valueRadians = 2 * Math.PI * (1 - valueRatio) + 0.5 * Math.PI; // slider increases clockwise, starts at top
     const dx = Math.cos(valueRadians);
     const dy = Math.sin(valueRadians);
+    let x = center + circleRadius * dx;
+    // almost full circle for 100% progress
+    if (valueRatio === 1) {
+      x--;
+    }
     return [
-      center + circleRadius * dx,
+      x,
       center - circleRadius * dy, // y axis is reversed (down = more)
       valueRatio,
     ];
