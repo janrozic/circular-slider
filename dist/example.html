@@ -2,24 +2,92 @@
 <html>
     <head>
         <title>Circular Slider Example</title>
+        <meta charset="utf-8" name="viewport" content= "width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                font-family: sans-serif;
+            }
+            article {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            .example {
+                background: #ebebeb;
+                padding: 50px;
+                margin: 30px 0;
+                border-radius: 30px;
+            }
+        </style>
     </head>
-    <body style="background: #eaebeb;">
-        <div id="test1" style="margin: 60px; padding: 50px;border: solid red 1px"></div>
+    <body>
+        <article>
+            <h1>Circular Slider Example</h1>
+            <h2>One slider</h2>
+            <div id="example1" class="example"></div>
+            <h2>Negative direction, custom color</h2>
+            <div id="example2" class="example"></div>
+            <h2>Multiple sliders</h2>
+            <div id="example3" class="example"></div>
+        </article>
         <script src="index.js"></script>
         <script>
+            // example 1
             new CircularSlider({
-                container: "#test1",
+                container: "#example1",
                 min: 0,
                 max: 100,
-                step: 2,
-                radius: 200,
+                step: 1,
+                radius: 150,
             });
+            // example 2
             new CircularSlider({
-                container: "#test1",
+                container: "#example2",
                 min: 1000,
                 max: -1000,
+                step: 200,
+                radius: 100,
+                color: "#38E7FF",
+            });
+            // example 3
+            new CircularSlider({
+                container: "#example3",
+                min: 1,
+                max: 200,
                 step: 20,
-                radius: 150,
+                radius: 270,
+                color: "#FFEE6B",
+            });
+            new CircularSlider({
+                container: "#example3",
+                min: 10,
+                max: 20,
+                step: 0.05,
+                radius: 220,
+                color: "#FF51A7",
+            });
+            new CircularSlider({
+                container: "#example3",
+                min: -70,
+                max: 10,
+                step: 1.5,
+                radius: 170,
+                color: "#B3276D",
+            });
+            new CircularSlider({
+                container: "#example3",
+                min: 0,
+                max: 420,
+                step: 20,
+                radius: 120,
+                color: "#30A2B3",
+            });
+            new CircularSlider({
+                container: "#example3",
+                min: 300,
+                max: 200,
+                step: 2,
+                radius: 70,
+                color: "#38E7FF",
             });
         </script>
     </body>
