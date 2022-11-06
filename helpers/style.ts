@@ -5,6 +5,7 @@ export default `
   .${rootClassName} {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
   }
   .${holderClassNamePrefix}legend {
     margin-right: 25px;
