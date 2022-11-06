@@ -74,7 +74,7 @@ export default class CircularSlider {
       this._handle = createSVGNode("circle", {
         cx,
         cy,
-        r: this.thickness * 0.5 + 1,
+        r: this.thickness * 0.5,
         fill: "#efefef",
         stroke: "#bfbfbf",
         "stroke-width": 2,
@@ -108,14 +108,20 @@ export default class CircularSlider {
       style: "position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%)",
     });
     // leading circle
+    // ensure gaps are uniform
+    const circumference = this.size * Math.PI;
+    const strokeDash = [7, 2]; // approx
+    const strokeDashSum = strokeDash[0] + strokeDash[1];
+    const correctedCurcumference = Math.round(circumference / strokeDashSum) * strokeDashSum;
     const circleBelow = createSVGNode("circle", {
       cx: center,
       cy: center,
       r: circleRadius,
       fill: "none",
-      stroke: "#c0c1c2",
+      stroke: "#cfcfcf",
       "stroke-width": this.thickness,
-      "stroke-dasharray": "7 2",  // approx
+      "stroke-dasharray": strokeDash.join(" "),
+      "pathLength": correctedCurcumference,
     });
     this.svg.appendChild(circleBelow);
     // arc & handle (progress)
