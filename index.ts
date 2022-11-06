@@ -1,4 +1,5 @@
-import { createSVGNode, getEventClientOffset, isTouchEvent, normalizeOptions } from "./helpers";
+import { createSVGNode, getEventClientOffset, normalizeOptions } from "./helpers";
+import style, { holderClassNamePrefix, rootClassName } from "./helpers/style";
 import { NormalizedOptions, Options } from "./helpers/types";
 
 export default class CircularSlider {
@@ -27,9 +28,18 @@ export default class CircularSlider {
     this._value = Math.min(max, Math.max(min, diff + start));
     requestAnimationFrame(() => this.updateDynamic());
   }
-
-  private get root(): ShadowRoot {
-    return this.options.container.shadowRoot || this.options.container.attachShadow({mode: "open"});
+  private createRoot(shadowRoot: ShadowRoot): Element {
+    const root = document.createElement("div");
+    const css = document.createElement("style");
+    css.textContent = style;
+    root.className = rootClassName;
+    shadowRoot.appendChild(root);
+    shadowRoot.appendChild(css);
+    return root;
+  }
+  private get root(): Element {
+    const shadowRoot = this.options.container.shadowRoot || this.options.container.attachShadow({mode: "open"});
+    return shadowRoot.firstElementChild || this.createRoot(shadowRoot);
   }
 
   private _arc: SVGElement;
@@ -73,8 +83,8 @@ export default class CircularSlider {
   }
   
   private attachListeners() {
-    this.root.addEventListener("mousedown", this.startDrag);
-    this.root.addEventListener("touchstart", this.startDrag);
+    this.options.container.addEventListener("mousedown", this.startDrag);
+    this.options.container.addEventListener("touchstart", this.startDrag);
     document.documentElement.addEventListener("mouseleave", this.stopDrag);
     document.documentElement.addEventListener("touchleave", this.stopDrag);
   }
@@ -108,7 +118,7 @@ export default class CircularSlider {
     this.svg.appendChild(this.handle);
     this.holders.svg.appendChild(this.svg);
     const legendHolder = document.createElement("div");
-    const legendIndicator = document.createElement("span");
+    const legendIndicator = document.createElement("i");
     this.legend = document.createElement("span");
     this.legend.innerText = this.valueText;
     legendIndicator.setAttribute("style", `background: ${this.options.color}`);
@@ -127,18 +137,18 @@ export default class CircularSlider {
         svg: undefined,
         legend: undefined,
       };
-      const keys = ["svg", "legend"] as const;
+      const keys = ["legend", "svg"] as const;
       for (const key of keys) {
-        const dataSetProp = "circularSliderHolder" + key;
+        const className = holderClassNamePrefix + key;
         for (let i = 0; i < this.root.children.length; i++) {
           const child = this.root.children[i];
-          if ((child instanceof HTMLElement) && child.dataset[dataSetProp]) {
+          if ((child instanceof HTMLElement) && child.classList.contains(className)) {
             this._holders[key] = child;
           }
         }
         if (!this._holders[key]) {
           this._holders[key] = document.createElement("div");
-          this._holders[key].dataset[dataSetProp] = "1";
+          this._holders[key].className = className;
           this.root.appendChild(this._holders[key]);
         }
       }
