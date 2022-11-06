@@ -24,4 +24,9 @@ export default `
     height: 15px;
     border: solid #bfbfbf 1px;
   }
+  svg {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+  }
 `;

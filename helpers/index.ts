@@ -80,3 +80,20 @@ export function getEventClientOffset(e: MouseEvent | TouchEvent): {x: number, y:
     }
   }
 }
+
+export function maxPrecision(...numbers: number[]) {
+  let max = 0;
+  for (let n of numbers) {
+    if (!isFinite(n)) {
+      continue;
+    }
+    let e = 1;
+    let p = 0;
+    while (Math.round(n * e) / e !== n) {
+      n *= 10;
+      p++;
+    }
+    max = Math.max(max, p);
+  }
+  return max;
+}

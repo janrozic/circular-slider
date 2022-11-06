@@ -1,16 +1,17 @@
-import { createSVGNode, getEventClientOffset, normalizeOptions } from "./helpers";
+import { createSVGNode, getEventClientOffset, maxPrecision, normalizeOptions } from "./helpers";
 import style, { holderClassNamePrefix, rootClassName } from "./helpers/style";
 import { NormalizedOptions, Options } from "./helpers/types";
 
 export default class CircularSlider {
   private options: NormalizedOptions;
+  private precision: number;
   private _value: number;
-  private thickness = 20; // TMP
+  private thickness = 20;
 
   constructor(opts: Options) {
     this.options = normalizeOptions(opts);
-    // this._value = this.options.min; // TMP
-    this._value = this.options.min + (this.options.max - this.options.min) * 0.3; // TMP
+    this.precision = maxPrecision(this.options.min, this.options.max, this.options.step);
+    this._value = this.options.min;
     this.renderDefault();
     this.attachListeners();
   }
@@ -105,7 +106,6 @@ export default class CircularSlider {
     this.svg = createSVGNode("svg", {
       width: this.size,
       height: this.size,
-      style: "position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%)",
     });
     // leading circle
     // ensure gaps are uniform
@@ -290,7 +290,7 @@ export default class CircularSlider {
     ];
   }
   get valueText(): string {
-    return String(this.value);
+    return this.value.toFixed(this.precision);
   }
   get arcPath(): Array<string | number> {
     const [center, circleRadius] = this.circleAttributes;
