@@ -33,12 +33,15 @@
         <script src="index.js"></script>
         <script>
             // example 1
-            new CircularSlider({
+            var example1 = new CircularSlider({
                 container: "#example1",
                 min: 0,
                 max: 100,
                 step: 1,
                 radius: 150,
+            });
+            document.getElementById("example1").addEventListener("Change", function () {
+                console.log(example1.value);
             });
             // example 2
             new CircularSlider({

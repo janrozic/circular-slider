@@ -16,10 +16,10 @@ export default class CircularSlider {
     this.attachListeners();
   }
 
-  private get value() {
+  public get value() {
     return this._value;
   }
-  private set value(v: number) {
+  public set value(v: number) {
     const start = this.options.min;
     const end = this.options.max;
     const min = Math.min(start, end);
@@ -27,6 +27,7 @@ export default class CircularSlider {
     // snap to step (why "v - start" => start can be 3 and step 5 => we have to snap diff)
     const diff = Math.round((v - start) / this.options.step) * this.options.step;
     this._value = Math.min(max, Math.max(min, diff + start));
+    this.options.container.dispatchEvent(new Event("Change", {bubbles: true}));
     requestAnimationFrame(() => this.updateDynamic());
   }
   private get progress() {
