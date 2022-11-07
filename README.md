@@ -26,7 +26,7 @@ You can run it with [serve](https://www.npmjs.com/package/serve).
 
 Install it globally
 
-    npm install -g serve`
+    npm install -g serve
 
 then
 
